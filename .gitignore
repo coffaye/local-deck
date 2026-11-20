@@ -1,0 +1,9 @@
+bin/
+obj/
+dist/
+shots/
+LocalDeck-data/
+*.user
+*.log
+LocalDeck-selftest.txt
+codex-*.log

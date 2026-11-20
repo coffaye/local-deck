@@ -1,0 +1,9 @@
+LibreHardwareMonitorLib 0.9.4
+https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+
+Licensed under the Mozilla Public License 2.0 (MPL-2.0).
+License text: https://www.mozilla.org/MPL/2.0/
+Source: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+
+The library is used only for read-only GPU sensor enumeration (integrated GPU
+load); no source modifications are made by LocalDeck.
