@@ -2,6 +2,9 @@
 
 一个 Windows 11 桌面迷你仪表：CPU、内存、温度、NVIDIA GPU、网络，以及 Codex 额度、DeepSeek 余额，全部放进一块 **360 × 360** 的迷你方形 LCD。
 
+> **GitHub 源码**：https://github.com/coffaye/local-deck  
+> **下载最新版**：https://github.com/coffaye/local-deck/releases/latest
+
 ![桌仪界面预览](screenshots/demo/01-monitor.png)
 
 > 截图使用界面演示数据；实际运行时所有硬件与额度均从本机读取。
