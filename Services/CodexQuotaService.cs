@@ -699,11 +699,10 @@ public sealed class CodexQuotaService
         }
 
         var span = reset - now;
-        if (span <= TimeSpan.Zero) return "等待新窗口";
-        if (span.TotalHours < 1) return $"{Math.Max(1, (int)span.TotalMinutes)} 分后重置";
-        if (span.TotalDays < 1) return $"{span.Hours} 小时 {span.Minutes} 分后重置";
-        if (span.TotalDays < 7) return $"{reset:M月d日 HH:mm} 重置";
-        return reset.ToString("M月d日 HH:mm", CultureInfo.CurrentCulture);
+        if (span <= TimeSpan.Zero) return "待重置";
+        if (span.TotalHours < 1) return $"{Math.Max(1, (int)span.TotalMinutes)}分后";
+        if (span.TotalDays < 1) return $"{span.Hours}时{span.Minutes}分后";
+        return $"{Math.Max(1, (int)Math.Round(span.TotalDays, MidpointRounding.AwayFromZero))}天后";
     }
 
     public static string FormatWindowLabel(int minutes)

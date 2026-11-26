@@ -98,6 +98,32 @@ public static class SelfTest
                    parsed.IsAvailable;
         });
 
+        Check("Claude usage parse", () =>
+        {
+            const string json = """
+            {"balance":76.18474267,"daily_usage":[{"date":"2026-11-26","actual_cost":0.8874935744}],"isValid":true,"mode":"unrestricted","remaining":76.18474267,"unit":"USD","usage":{"today":{"actual_cost":0.8874935744,"cost":5.91662383}}}
+            """;
+            using var doc = JsonDocument.Parse(json);
+            var parsed = ClaudeQuotaService.ParseUsage(
+                doc.RootElement, DateTimeOffset.Now, "https://api.aijws.com/v1/usage");
+            return parsed.IsValid &&
+                   parsed.Balance == 76.18474267m &&
+                   parsed.TodayCost == 0.8874935744m &&
+                   parsed.Currency == "USD";
+        });
+
+        Check("Claude config URL normalization", () =>
+            ClaudeConfigReader.NormalizeQueryUrl("https://api.aijws.com") ==
+                "https://api.aijws.com/v1/usage" &&
+            ClaudeConfigReader.NormalizeQueryUrl("https://api.aijws.com/v1") ==
+                "https://api.aijws.com/v1/usage");
+
+        Check("Codex reset formatting", () =>
+            CodexQuotaService.FormatReset(
+                DateTimeOffset.Now.AddDays(6).AddHours(1).ToUnixTimeSeconds(), DateTimeOffset.Now) == "6天后" &&
+            CodexQuotaService.FormatReset(
+                DateTimeOffset.Now.AddMinutes(38).AddSeconds(30).ToUnixTimeSeconds(), DateTimeOffset.Now) == "38分后");
+
         Check("memory sensor", () =>
         {
             using var sampler = new SystemSampler();

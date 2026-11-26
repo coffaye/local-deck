@@ -329,6 +329,116 @@ public sealed class DeepSeekBalanceCardViewModel : ObservableObject
     }
 }
 
+public sealed class ClaudeBalanceCardViewModel : ObservableObject
+{
+    private string _balanceText = "—";
+    private string _currencySymbol = string.Empty;
+    private string _todayText = "今日 —";
+    private string _statusText = "未配置";
+    private string _hintText = "自动读取 Claude CLI 配置";
+    private string _updatedText = "尚未同步";
+    private bool _hasData;
+    private bool _isConfigured;
+    private bool _isLoading;
+    private bool _isUnavailable;
+    private Brush _statusBrush = UiBrushes.Muted;
+
+    public string BalanceText { get => _balanceText; set => Set(ref _balanceText, value); }
+    public string CurrencySymbol { get => _currencySymbol; set => Set(ref _currencySymbol, value); }
+    public string TodayText { get => _todayText; set => Set(ref _todayText, value); }
+    public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
+    public string HintText { get => _hintText; set => Set(ref _hintText, value); }
+    public string UpdatedText { get => _updatedText; set => Set(ref _updatedText, value); }
+    public bool HasData { get => _hasData; set => Set(ref _hasData, value); }
+    public bool IsConfigured { get => _isConfigured; set => Set(ref _isConfigured, value); }
+    public bool IsLoading { get => _isLoading; set => Set(ref _isLoading, value); }
+    public bool IsUnavailable { get => _isUnavailable; set => Set(ref _isUnavailable, value); }
+    public Brush StatusBrush { get => _statusBrush; set => Set(ref _statusBrush, value); }
+
+    public void BeginLoading(bool configured)
+    {
+        IsConfigured = configured;
+        IsLoading = true;
+        IsUnavailable = false;
+        if (HasData)
+        {
+            StatusText = "刷新中";
+            StatusBrush = UiBrushes.Muted;
+        }
+        else
+        {
+            StatusText = configured ? "读取中" : "未配置";
+            StatusBrush = UiBrushes.Muted;
+        }
+    }
+
+    public void Apply(ClaudeUsageResult result)
+    {
+        HasData = true;
+        IsConfigured = true;
+        IsLoading = false;
+        IsUnavailable = false;
+        var symbol = ClaudeQuotaService.CurrencySymbol(result.Currency);
+        CurrencySymbol = symbol;
+        BalanceText = ClaudeQuotaService.FormatBalance(result.Balance);
+        TodayText = $"今日 {symbol}{ClaudeQuotaService.FormatCost(result.TodayCost)}";
+        UpdatedText = $"{result.ObservedAt:HH:mm} 更新 · 余额接口";
+        HintText = "余额只读，不产生调用";
+        if (!result.IsValid)
+        {
+            StatusText = "已失效";
+            StatusBrush = UiBrushes.Orange;
+        }
+        else if (result.Balance <= 0)
+        {
+            StatusText = "余额不足";
+            StatusBrush = UiBrushes.Orange;
+        }
+        else
+        {
+            StatusText = "可用";
+            StatusBrush = UiBrushes.Lime;
+        }
+    }
+
+    public void NotConfigured(string message = "未找到 Claude CLI 配置")
+    {
+        HasData = false;
+        IsConfigured = false;
+        IsLoading = false;
+        IsUnavailable = false;
+        BalanceText = "—";
+        CurrencySymbol = string.Empty;
+        TodayText = "今日 —";
+        StatusText = "未配置";
+        StatusBrush = UiBrushes.Muted;
+        HintText = message;
+        UpdatedText = "尚未同步";
+    }
+
+    public void Fail(string message, bool configured = true)
+    {
+        IsConfigured = configured;
+        IsLoading = false;
+        IsUnavailable = true;
+        if (!HasData)
+        {
+            BalanceText = "—";
+            CurrencySymbol = string.Empty;
+            TodayText = "今日 —";
+            UpdatedText = "同步失败";
+        }
+        else
+        {
+            UpdatedText = "显示上次结果 · 刷新失败";
+        }
+
+        StatusText = configured ? "连接失败" : "未配置";
+        StatusBrush = configured ? UiBrushes.Orange : UiBrushes.Muted;
+        HintText = message;
+    }
+}
+
 public sealed class DashboardViewModel : ObservableObject
 {
     private const int HistorySize = 42;
@@ -362,6 +472,7 @@ public sealed class DashboardViewModel : ObservableObject
     private Brush _tempBrush = UiBrushes.Lime;
 
     public CodexQuotaCardViewModel Codex { get; } = new();
+    public ClaudeBalanceCardViewModel Claude { get; } = new();
     public DeepSeekBalanceCardViewModel DeepSeek { get; } = new();
 
     public string CpuValue { get => _cpuValue; set => Set(ref _cpuValue, value); }
@@ -489,6 +600,8 @@ public sealed class DashboardViewModel : ObservableObject
             new CodexQuotaWindow(100, 300, DateTimeOffset.Now.AddMinutes(39).ToUnixTimeSeconds()),
             new CodexQuotaWindow(0, 10080, DateTimeOffset.Now.AddDays(6).ToUnixTimeSeconds()),
             "plus", 2, "APP-SERVER", now, false, null));
+        Claude.Apply(new ClaudeUsageResult(
+            true, 76.18m, 0.89m, "USD", "unrestricted", now, "https://api.aijws.com/v1/usage"));
         DeepSeek.Apply(new DeepSeekBalanceResult(
             true, "CNY", 12.48m, 2.00m, 10.48m, now));
     }

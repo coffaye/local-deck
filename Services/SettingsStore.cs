@@ -93,6 +93,12 @@ public sealed class AppSettings
     [JsonIgnore]
     public string DeepSeekApiKey { get; set; } = string.Empty;
 
+    public string ClaudeQueryUrl { get; set; } = string.Empty;
+    public string ClaudeApiKeyProtected { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public string ClaudeApiKey { get; set; } = string.Empty;
+
     [JsonIgnore]
     public bool ApiKeyCameFromEnvironment { get; set; }
 
@@ -153,6 +159,18 @@ public static class SettingsStore
             }
         }
 
+        if (!string.IsNullOrWhiteSpace(settings.ClaudeApiKeyProtected))
+        {
+            try
+            {
+                settings.ClaudeApiKey = Dpapi.Unprotect(settings.ClaudeApiKeyProtected);
+            }
+            catch
+            {
+                settings.ClaudeApiKey = string.Empty;
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(settings.DeepSeekApiKey))
         {
             var envKey = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
@@ -174,7 +192,8 @@ public static class SettingsStore
     /// Persists settings. Pass a new key to replace the stored credential, or null to leave it untouched.
     /// Passing an empty string removes the stored credential.
     /// </summary>
-    public static void Save(AppSettings settings, string? replacementApiKey = null)
+    public static void Save(AppSettings settings, string? replacementApiKey = null,
+        string? replacementClaudeApiKey = null)
     {
         Directory.CreateDirectory(AppPaths.DataDirectory);
 
@@ -191,6 +210,20 @@ public static class SettingsStore
                 settings.DeepSeekApiKey = replacementApiKey.Trim();
                 settings.DeepSeekApiKeyProtected = Dpapi.Protect(settings.DeepSeekApiKey);
                 settings.ApiKeyCameFromEnvironment = false;
+            }
+        }
+
+        if (replacementClaudeApiKey is not null)
+        {
+            if (string.IsNullOrWhiteSpace(replacementClaudeApiKey))
+            {
+                settings.ClaudeApiKeyProtected = string.Empty;
+                settings.ClaudeApiKey = string.Empty;
+            }
+            else
+            {
+                settings.ClaudeApiKey = replacementClaudeApiKey.Trim();
+                settings.ClaudeApiKeyProtected = Dpapi.Protect(settings.ClaudeApiKey);
             }
         }
 

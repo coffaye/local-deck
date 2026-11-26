@@ -1,6 +1,6 @@
-# 桌仪 · LocalDeck 1.5.5
+# 桌仪 · LocalDeck 1.6.0
 
-一个 Windows 11 桌面迷你仪表：CPU、内存、温度、NVIDIA GPU、网络，以及 Codex 额度、DeepSeek 余额，全部放进一块 **360 × 360** 的方形 LCD。
+一个 Windows 11 桌面迷你仪表：CPU、内存、温度、NVIDIA GPU、网络，以及 Codex 额度、Claude 余额、DeepSeek 余额，全部放进一块 **360 × 360** 的方形 LCD。
 
 > **GitHub 源码**：https://github.com/coffaye/local-deck  
 > **下载最新版**：https://github.com/coffaye/local-deck/releases/latest
@@ -15,7 +15,9 @@
 
 - **双主题**：设置 → 窗口右侧选择「性能优先 / 额度优先」，保存后立即切换并持久化。
   - **性能优先**：CPU / 内存大数字在上，历史曲线居中，额度条在底部。
-  - **额度优先**：额度条置顶并放大 Codex / DeepSeek 数字；5 小时 / 7 天标签在数值上方，0% / 100% 与 DeepSeek 余额对齐；CPU / 内存缩小，曲线下移，传感器行留底部。
+  - **额度优先**：额度条置顶并放大 Codex / Claude / DeepSeek 数字；CPU / 内存缩小，曲线下移，传感器行留底部。
+- **额度条三栏**：Codex 缩窄以容纳 Claude 和 DeepSeek，窗口总尺寸仍是 360 × 360；Codex 的 5 小时 / 7 天重置时间分别显示在各自数值下方。
+- **Claude 余额**：自动读取 Claude CLI 的 `~/.claude/settings.json`，用其中的 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL` 推导 `/v1/usage`，显示供应商预付费余额和今日消耗；设置里可覆盖查询地址或 Key。
 - **360 × 360 固定方形窗口**，布局紧凑，不支持拖拽缩放。
 - **背景透明度滑条**：位于顶部图钉左侧，只调整背景 alpha，文字、数字和控件保持不透明。
 - **标题栏隐藏**：失焦时整块窗框上沿下移、窗口高度缩短，正文位置不变；重新聚焦恢复。
@@ -64,6 +66,20 @@ Release 资产：
 
 不会刷新或写入 Codex token，也不会把 token 写入日志或发送给第三方。
 
+### Claude 余额
+
+自动读取 `%USERPROFILE%\.claude\settings.json` 的 `env.ANTHROPIC_AUTH_TOKEN` 和 `env.ANTHROPIC_BASE_URL`，默认请求：
+
+```text
+<ANTHROPIC_BASE_URL>/v1/usage
+```
+
+显示供应商返回的余额（USD / CNY）和今日实际消耗。读取是只读的，不会调用模型、不会消费额度。
+
+- 如果 Base URL 或 Key 不在 Claude CLI 配置中，可以在设置 → Claude 里手动填写查询地址和 Key；
+- 手动 Key 使用 DPAPI 加密保存，留空时继续使用 Claude CLI 配置；
+- 供应商接口不可用时显示「连接失败」，不影响其他卡片。
+
 ### DeepSeek 余额
 
 通过官方 `GET https://api.deepseek.com/user/balance` 读取余额（CNY / USD）和可用状态。可在设置中填写 API Key 并测试；也支持环境变量 `DEEPSEEK_API_KEY`。
@@ -73,6 +89,7 @@ Release 资产：
 设置页为三组卡片：
 
 - **数据源**：Codex 路径自动检测 / 浏览；DeepSeek 密钥测试 / 清除。
+- **Claude**：自动读取 Claude CLI 配置；可覆盖查询地址和 Key，支持测试 / 清除。
 - **刷新**：统计网卡、额度刷新（1 / 5 / 15 / 30 分钟）、硬件刷新。
 - **窗口**：主题、窗口置顶、开机启动、标题栏隐藏。
 - 底部固定「保存并应用」；保存后主题、刷新间隔和开关立即生效。
@@ -112,6 +129,7 @@ pwsh .\build.ps1
 - Codex 额度依赖本机登录态；接口不可用时会回退到本地快照。
 - Windows 11 的托盘图标默认可能进入 `^`；应用会尝试设为常显，未生效时拖出一次即可。
 - 未做代码签名，首次直接运行可能出现 SmartScreen；推荐使用启动脚本。
+- Claude 余额来自 token 供应商的 `/v1/usage` 接口，字段和语义由供应商决定；默认按 AIJWS 的 `balance` / `usage.today.actual_cost` 解析，换供应商时可在设置里改查询地址。
 - DeepSeek 余额需要自己的 API Key；仓库不内置任何账户凭据。
 
 ## 目录

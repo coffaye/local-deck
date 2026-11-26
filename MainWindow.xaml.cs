@@ -20,8 +20,10 @@ public partial class MainWindow : Window
     private readonly DashboardViewModel _viewModel = new();
     private readonly SystemSampler _sampler = new();
     private readonly DeepSeekService _deepSeekService = new();
+    private readonly ClaudeQuotaService _claudeService = new();
     private readonly SemaphoreSlim _sampleGate = new(1, 1);
     private readonly SemaphoreSlim _codexGate = new(1, 1);
+    private readonly SemaphoreSlim _claudeGate = new(1, 1);
     private readonly SemaphoreSlim _deepSeekGate = new(1, 1);
 
     private AppSettings _settings;
@@ -31,6 +33,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _quotaCts;
     private bool _started;
     private bool _clearApiKeyPending;
+    private bool _clearClaudeKeyPending;
     private bool _uiReady;
     private bool _exitRequested;
     private bool _titleBarCollapsed;
@@ -102,9 +105,10 @@ public partial class MainWindow : Window
             CodexSecondaryLabelText.FontWeight = FontWeights.SemiBold;
             CodexPrimaryStack.Margin = new Thickness(0, 23, 0, 0);
             CodexSecondaryStack.Margin = new Thickness(0, 23, 0, 0);
-            CodexPrimaryValueText.FontSize = 26;
-            CodexSecondaryValueText.FontSize = 26;
-            DeepSeekBalanceValueText.FontSize = 30;
+            CodexPrimaryValueText.FontSize = 19;
+            CodexSecondaryValueText.FontSize = 19;
+            ClaudeBalanceValueText.FontSize = 21;
+            DeepSeekBalanceValueText.FontSize = 24;
         }
         else
         {
@@ -136,8 +140,9 @@ public partial class MainWindow : Window
             CodexSecondaryLabelText.FontWeight = FontWeights.Normal;
             CodexPrimaryStack.Margin = new Thickness(0);
             CodexSecondaryStack.Margin = new Thickness(0);
-            CodexPrimaryValueText.FontSize = 20;
-            CodexSecondaryValueText.FontSize = 20;
+            CodexPrimaryValueText.FontSize = 18;
+            CodexSecondaryValueText.FontSize = 18;
+            ClaudeBalanceValueText.FontSize = 20;
             DeepSeekBalanceValueText.FontSize = 22;
         }
     }
@@ -222,6 +227,15 @@ public partial class MainWindow : Window
         }
 
         _viewModel.Codex.BeginLoading();
+        var claudeConfig = ClaudeConfigReader.Resolve(_settings);
+        if (claudeConfig.IsConfigured)
+        {
+            _viewModel.Claude.BeginLoading(true);
+        }
+        else
+        {
+            _viewModel.Claude.NotConfigured("未找到 Claude CLI 配置，可在设置中填写");
+        }
         if (_settings.DeepSeekConfigured)
         {
             _viewModel.DeepSeek.BeginLoading(true);
@@ -384,8 +398,9 @@ public partial class MainWindow : Window
     {
         if (App.DemoMode) return;
         var codex = RefreshCodexAsync(cancellationToken);
+        var claude = RefreshClaudeAsync(cancellationToken);
         var deepSeek = RefreshDeepSeekAsync(cancellationToken);
-        await Task.WhenAll(codex, deepSeek);
+        await Task.WhenAll(codex, claude, deepSeek);
     }
 
     private async Task RefreshCodexAsync(CancellationToken cancellationToken)
@@ -414,6 +429,56 @@ public partial class MainWindow : Window
         finally
         {
             _codexGate.Release();
+        }
+    }
+
+    private async Task RefreshClaudeAsync(CancellationToken cancellationToken)
+    {
+        ClaudeResolvedConfig config;
+        try
+        {
+            config = ClaudeConfigReader.Resolve(_settings);
+        }
+        catch
+        {
+            await Dispatcher.InvokeAsync(() =>
+                _viewModel.Claude.NotConfigured("无法读取 Claude 配置"));
+            return;
+        }
+
+        if (!config.IsConfigured)
+        {
+            await Dispatcher.InvokeAsync(() =>
+                _viewModel.Claude.NotConfigured(config.HasToken
+                    ? "未找到 Claude 查询地址，可在设置中填写"
+                    : "未找到 Claude CLI 配置，可在设置中填写"));
+            return;
+        }
+
+        if (!await _claudeGate.WaitAsync(0, cancellationToken)) return;
+        try
+        {
+            await Dispatcher.InvokeAsync(() => _viewModel.Claude.BeginLoading(true));
+            var result = await Task.Run(
+                () => _claudeService.GetUsageAsync(config, cancellationToken),
+                cancellationToken);
+            await Dispatcher.InvokeAsync(() => _viewModel.Claude.Apply(result));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Closing.
+        }
+        catch (ClaudeQuotaException ex)
+        {
+            await Dispatcher.InvokeAsync(() => _viewModel.Claude.Fail(ex.Message));
+        }
+        catch (Exception)
+        {
+            await Dispatcher.InvokeAsync(() => _viewModel.Claude.Fail("Claude 额度刷新失败"));
+        }
+        finally
+        {
+            _claudeGate.Release();
         }
     }
 
@@ -470,6 +535,14 @@ public partial class MainWindow : Window
                 : "密钥已保存 · 留空不修改"
             : "尚未配置";
         ApiKeyStatusText.Foreground = _settings.DeepSeekConfigured ? UiBrushes.Lime : UiBrushes.Muted;
+
+        ClaudeApiKeyBox.Clear();
+        _clearClaudeKeyPending = false;
+        var claudeConfig = ClaudeConfigReader.Resolve(_settings);
+        ClaudeQueryUrlBox.Text = string.IsNullOrWhiteSpace(_settings.ClaudeQueryUrl)
+            ? claudeConfig.QueryUrl ?? string.Empty
+            : _settings.ClaudeQueryUrl;
+        UpdateClaudeSettingsStatus(claudeConfig);
 
         LoadNetworkChoices();
         SelectQuotaRefresh(_settings.QuotaRefreshMinutes);
@@ -673,6 +746,90 @@ public partial class MainWindow : Window
     private void OpenSettingsFromDeepSeek_Click(object sender, RoutedEventArgs e) =>
         ShowSettings_Click(sender, e);
 
+    private void UpdateClaudeSettingsStatus(ClaudeResolvedConfig? config = null)
+    {
+        config ??= ClaudeConfigReader.Resolve(_settings);
+        var hasOverride = !string.IsNullOrWhiteSpace(_settings.ClaudeApiKeyProtected) ||
+                          !string.IsNullOrWhiteSpace(_settings.ClaudeApiKey);
+        var keySource = hasOverride
+            ? "自定义 Key"
+            : config.HasToken
+                ? $"Key: {config.TokenSource}"
+                : "未找到 Key";
+        ClaudeStatusText.Text = config.IsConfigured
+            ? $"已就绪 · {keySource}"
+            : $"未配置 · {keySource}";
+        ClaudeStatusText.Foreground = config.IsConfigured ? UiBrushes.Lime : UiBrushes.Muted;
+        ClaudeStatusText.ToolTip = config.QueryUrl;
+    }
+
+    private void AutoDetectClaude_Click(object sender, RoutedEventArgs e)
+    {
+        var config = ClaudeConfigReader.Resolve(_settings, ignoreSettings: true);
+        ClaudeQueryUrlBox.Text = config.QueryUrl ?? string.Empty;
+        ClaudeStatusText.Text = config.HasToken
+            ? config.HasQueryUrl
+                ? "已读取 Claude CLI 配置 · 可保存"
+                : "已读取 Key，但未找到查询地址"
+            : "未找到 Claude CLI 配置，请手动填写";
+        ClaudeStatusText.Foreground = config.IsConfigured ? UiBrushes.Lime : UiBrushes.Amber;
+        ClaudeStatusText.ToolTip = config.QueryUrl;
+    }
+
+    private async void TestClaude_Click(object sender, RoutedEventArgs e)
+    {
+        var resolved = ClaudeConfigReader.Resolve(_settings);
+        var key = ClaudeApiKeyBox.Password.Trim();
+        if (string.IsNullOrWhiteSpace(key)) key = resolved.Token ?? string.Empty;
+        var url = ClaudeQueryUrlBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(url)) url = resolved.QueryUrl ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            ClaudeStatusText.Foreground = UiBrushes.Orange;
+            ClaudeStatusText.Text = "请填写 Claude Key，或先配置 Claude CLI";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(url) ||
+            !Uri.TryCreate(url, UriKind.Absolute, out _))
+        {
+            ClaudeStatusText.Foreground = UiBrushes.Orange;
+            ClaudeStatusText.Text = "请填写有效的 Claude 查询地址";
+            return;
+        }
+
+        ClaudeStatusText.Foreground = UiBrushes.Muted;
+        ClaudeStatusText.Text = "正在连接 Claude…";
+        try
+        {
+            var config = new ClaudeResolvedConfig(true, true, key, url, null, false, "测试", "测试");
+            var result = await _claudeService.GetUsageAsync(config, CancellationToken.None);
+            _viewModel.Claude.Apply(result);
+            var symbol = ClaudeQuotaService.CurrencySymbol(result.Currency);
+            ClaudeStatusText.Foreground = result.IsValid ? UiBrushes.Lime : UiBrushes.Orange;
+            ClaudeStatusText.Text =
+                $"连接成功 · 余额 {symbol}{ClaudeQuotaService.FormatBalance(result.Balance)}（尚未保存）";
+        }
+        catch (ClaudeQuotaException ex)
+        {
+            ClaudeStatusText.Foreground = UiBrushes.Orange;
+            ClaudeStatusText.Text = ex.Message;
+        }
+        catch (Exception)
+        {
+            ClaudeStatusText.Foreground = UiBrushes.Orange;
+            ClaudeStatusText.Text = "Claude 连接失败";
+        }
+    }
+
+    private void ClearClaudeKey_Click(object sender, RoutedEventArgs e)
+    {
+        _clearClaudeKeyPending = true;
+        ClaudeApiKeyBox.Clear();
+        ClaudeStatusText.Foreground = UiBrushes.Amber;
+        ClaudeStatusText.Text = "已清除自定义 Key · 保存后改用 Claude CLI 配置";
+    }
+
     private void BrowseCodex_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
@@ -759,8 +916,12 @@ public partial class MainWindow : Window
         var replacementKey = !string.IsNullOrWhiteSpace(ApiKeyBox.Password)
             ? ApiKeyBox.Password.Trim()
             : _clearApiKeyPending ? string.Empty : null;
+        var replacementClaudeKey = !string.IsNullOrWhiteSpace(ClaudeApiKeyBox.Password)
+            ? ClaudeApiKeyBox.Password.Trim()
+            : _clearClaudeKeyPending ? string.Empty : null;
 
         _settings.CodexPath = CodexPathBox.Text.Trim();
+        _settings.ClaudeQueryUrl = ClaudeQueryUrlBox.Text.Trim();
         _settings.NetworkAdapterId =
             NetworkCombo.SelectedItem is AdapterChoice choice ? choice.Id : string.Empty;
         _settings.AlwaysOnTop = AlwaysOnTopCheck.IsChecked == true;
@@ -783,7 +944,7 @@ public partial class MainWindow : Window
 
         try
         {
-            SettingsStore.Save(_settings, replacementKey);
+            SettingsStore.Save(_settings, replacementKey, replacementClaudeKey);
             _settings.LoadFailed = false;
         }
         catch (Exception)
@@ -801,6 +962,19 @@ public partial class MainWindow : Window
                 ? "环境变量密钥 · 仅本次运行"
                 : "密钥已保存 · 留空不修改"
             : "尚未配置";
+
+        _clearClaudeKeyPending = false;
+        ClaudeApiKeyBox.Clear();
+        var claudeConfig = ClaudeConfigReader.Resolve(_settings);
+        if (string.IsNullOrWhiteSpace(_settings.ClaudeQueryUrl))
+        {
+            ClaudeQueryUrlBox.Text = claudeConfig.QueryUrl ?? string.Empty;
+        }
+        UpdateClaudeSettingsStatus(claudeConfig);
+        if (replacementClaudeKey is not null)
+        {
+            _viewModel.Claude.NotConfigured();
+        }
 
         Topmost = _settings.AlwaysOnTop;
         PinToggle.IsChecked = _settings.AlwaysOnTop;
@@ -1256,6 +1430,7 @@ public partial class MainWindow : Window
         public override string ToString() => Display;
     }
 }
+
 
 
 
