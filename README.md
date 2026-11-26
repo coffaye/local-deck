@@ -1,4 +1,4 @@
-# 桌仪 · LocalDeck 1.6.0
+# 桌仪 · LocalDeck 1.6.1
 
 一个 Windows 11 桌面迷你仪表：CPU、内存、温度、NVIDIA GPU、网络，以及 Codex 额度、Claude 余额、DeepSeek 余额，全部放进一块 **360 × 360** 的方形 LCD。
 
@@ -17,7 +17,9 @@
   - **性能优先**：CPU / 内存大数字在上，历史曲线居中，额度条在底部。
   - **额度优先**：额度条置顶并放大 Codex / Claude / DeepSeek 数字；CPU / 内存缩小，曲线下移，传感器行留底部。
 - **额度条三栏**：Codex 缩窄以容纳 Claude 和 DeepSeek，窗口总尺寸仍是 360 × 360；Codex 的 5 小时 / 7 天重置时间分别显示在各自数值下方。
-- **Claude 余额**：自动读取 Claude CLI 的 `~/.claude/settings.json`，用其中的 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL` 推导 `/v1/usage`，显示供应商预付费余额和今日消耗；设置里可覆盖查询地址或 Key。
+- **Claude 余额**：自动读取 Claude CLI 的 `~/.claude/settings.json`，用其中的 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL` 推导 `/v1/usage`，显示供应商预付费余额和今日消耗；配置已并入「数据源」卡片，可覆盖查询地址或 Key。
+- **统一余额排版**：Claude 与 DeepSeek 的货币符号、余额字号和高度一致；Claude 只在下方多一行「今日」消耗。
+- **设置滚动**：内容超出时使用深紫主题的竖向滚动条，「保存并应用」仍固定在底部。
 - **360 × 360 固定方形窗口**，布局紧凑，不支持拖拽缩放。
 - **背景透明度滑条**：位于顶部图钉左侧，只调整背景 alpha，文字、数字和控件保持不透明。
 - **标题栏隐藏**：失焦时整块窗框上沿下移、窗口高度缩短，正文位置不变；重新聚焦恢复。
@@ -76,7 +78,7 @@ Release 资产：
 
 显示供应商返回的余额（USD / CNY）和今日实际消耗。读取是只读的，不会调用模型、不会消费额度。
 
-- 如果 Base URL 或 Key 不在 Claude CLI 配置中，可以在设置 → Claude 里手动填写查询地址和 Key；
+- 如果 Base URL 或 Key 不在 Claude CLI 配置中，可以在设置 → 数据源 → Claude 里手动填写查询地址和 Key；
 - 手动 Key 使用 DPAPI 加密保存，留空时继续使用 Claude CLI 配置；
 - 供应商接口不可用时显示「连接失败」，不影响其他卡片。
 
@@ -88,8 +90,7 @@ Release 资产：
 
 设置页为三组卡片：
 
-- **数据源**：Codex 路径自动检测 / 浏览；DeepSeek 密钥测试 / 清除。
-- **Claude**：自动读取 Claude CLI 配置；可覆盖查询地址和 Key，支持测试 / 清除。
+- **数据源**：Codex 路径、DeepSeek 密钥、Claude 查询地址 / Key（同一张卡片）；支持自动检测、测试和清除。
 - **刷新**：统计网卡、额度刷新（1 / 5 / 15 / 30 分钟）、硬件刷新。
 - **窗口**：主题、窗口置顶、开机启动、标题栏隐藏。
 - 底部固定「保存并应用」；保存后主题、刷新间隔和开关立即生效。

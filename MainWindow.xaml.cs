@@ -107,7 +107,7 @@ public partial class MainWindow : Window
             CodexSecondaryStack.Margin = new Thickness(0, 23, 0, 0);
             CodexPrimaryValueText.FontSize = 19;
             CodexSecondaryValueText.FontSize = 19;
-            ClaudeBalanceValueText.FontSize = 21;
+            ClaudeBalanceValueText.FontSize = 24;
             DeepSeekBalanceValueText.FontSize = 24;
         }
         else
@@ -142,7 +142,7 @@ public partial class MainWindow : Window
             CodexSecondaryStack.Margin = new Thickness(0);
             CodexPrimaryValueText.FontSize = 18;
             CodexSecondaryValueText.FontSize = 18;
-            ClaudeBalanceValueText.FontSize = 20;
+            ClaudeBalanceValueText.FontSize = 22;
             DeepSeekBalanceValueText.FontSize = 22;
         }
     }
