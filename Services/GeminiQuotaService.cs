@@ -57,6 +57,9 @@ public sealed class GeminiQuotaService
         var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
 
+        // Official Windows default installer location (%LOCALAPPDATA%\agy\bin\agy.exe).
+        candidates.Add(Path.Combine(local, "agy", "bin", "agy.exe"));
+
         foreach (var path in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
                      .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
         {
@@ -225,8 +228,18 @@ public sealed class GeminiQuotaService
             return null;
         }
 
-        // Unwrap `structured_output`, `response`, `data`, or `result` objects if present.
+        // Unwrap `command.data` (agy 1.5+ `/usage` JSON envelope), `structured_output`,
+        // `response`, `data`, or `result` objects if present.
         var plan = ExtractPlan(root);
+
+        if (root.TryGetProperty("command", out var commandProp) &&
+            commandProp.ValueKind == JsonValueKind.Object &&
+            commandProp.TryGetProperty("data", out var commandData) &&
+            commandData.ValueKind == JsonValueKind.Object)
+        {
+            var res = ParseQuotaObject(commandData, plan ?? ExtractPlan(commandData), observedAt);
+            if (res is not null) return res;
+        }
 
         if (root.TryGetProperty("structured_output", out var structured) &&
             structured.ValueKind == JsonValueKind.Object)
@@ -349,7 +362,10 @@ public sealed class GeminiQuotaService
 
             foreach (var bucket in buckets.EnumerateArray())
             {
-                var id = TryGetString(bucket, "bucketId") ?? TryGetString(bucket, "modelId") ?? string.Empty;
+                var id = TryGetString(bucket, "id") ??
+                         TryGetString(bucket, "bucketId") ??
+                         TryGetString(bucket, "modelId") ??
+                         string.Empty;
                 if (id.Contains("gemini", StringComparison.OrdinalIgnoreCase))
                 {
                     return group;
@@ -415,6 +431,7 @@ public sealed class GeminiQuotaService
 
         var hint = string.Join(" ",
             TryGetString(item, "window") ?? string.Empty,
+            TryGetString(item, "id") ?? string.Empty,
             TryGetString(item, "bucketId") ?? string.Empty,
             TryGetString(item, "displayName") ?? string.Empty,
             TryGetString(item, "name") ?? string.Empty).ToLowerInvariant();
@@ -455,7 +472,8 @@ public sealed class GeminiQuotaService
             if (!item.TryGetProperty(key, out var prop)) continue;
             if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt64(out var unix))
             {
-                return unix > 1_000_000_000_000L ? unix / 1000L : unix;
+                var normalized = unix > 1_000_000_000_000L ? unix / 1000L : unix;
+                return normalized > 0 ? normalized : null;
             }
             if (prop.ValueKind == JsonValueKind.String)
             {
@@ -463,12 +481,14 @@ public sealed class GeminiQuotaService
                 if (string.IsNullOrWhiteSpace(s)) continue;
                 if (long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedUnix))
                 {
-                    return parsedUnix > 1_000_000_000_000L ? parsedUnix / 1000L : parsedUnix;
+                    var normalized = parsedUnix > 1_000_000_000_000L ? parsedUnix / 1000L : parsedUnix;
+                    return normalized > 0 ? normalized : null;
                 }
                 if (DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture,
                         DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dto))
                 {
-                    return dto.ToUnixTimeSeconds();
+                    var seconds = dto.ToUnixTimeSeconds();
+                    return seconds > 0 ? seconds : null;
                 }
             }
         }

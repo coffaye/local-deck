@@ -579,7 +579,9 @@ public sealed class GeminiQuotaCardViewModel : ObservableObject
             : CodexQuotaService.FormatWindowLabel(window.WindowMinutes);
         remainingText = $"{left}%";
         remaining = left;
-        resetText = CodexQuotaService.FormatReset(window.ResetsAt, DateTimeOffset.Now);
+        resetText = window.ResetsAt is null && left >= 100
+            ? "未使用"
+            : CodexQuotaService.FormatReset(window.ResetsAt, DateTimeOffset.Now);
         brush = tone;
 
         OnPropertyChanged(labelProperty);

@@ -151,6 +151,32 @@ public static class SelfTest
                    parsed.Secondary?.ResetsAt is not null;
         });
 
+        Check("Gemini agy command.data JSON parse", () =>
+        {
+            const string json = """
+            {"conversation_id":"","status":"SUCCESS","response":"Gemini Models\tWeekly Limit Remaining\t96%\t2026-12-04T10:47:19Z\n","command":{"name":"usage","data":{"groups":[{"name":"Gemini Models","buckets":[{"id":"gemini-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":0.9631,"reset_time":"2026-12-04T10:47:19Z"},{"id":"gemini-5h","name":"Five Hour Limit Remaining","window":"5h","remaining_fraction":0.85,"reset_time":"2026-11-27T15:47:19Z"}]},{"name":"Claude and GPT models","buckets":[{"id":"3p-weekly","window":"weekly","remaining_fraction":1.0,"reset_time":"1970-01-01T00:00:00Z"}]}]}}}
+            """;
+            var parsed = GeminiQuotaService.ParseAgyOutput(json, DateTimeOffset.Now);
+            return parsed is not null &&
+                   parsed.Primary?.RemainingPercent == 85 &&
+                   parsed.Primary?.WindowMinutes == 300 &&
+                   parsed.Primary?.ResetsAt is > 0 &&
+                   parsed.Secondary?.RemainingPercent == 96 &&
+                   parsed.Secondary?.WindowMinutes == 10080 &&
+                   parsed.Secondary?.ResetsAt is > 0;
+        });
+
+        Check("Gemini agy epoch-zero reset normalized to null", () =>
+        {
+            const string json = """
+            {"command":{"name":"usage","data":{"groups":[{"name":"Gemini Models","buckets":[{"id":"gemini-5h","window":"5h","remaining_fraction":1.0,"reset_time":"1970-01-01T00:00:00Z"}]}]}}}
+            """;
+            var parsed = GeminiQuotaService.ParseAgyOutput(json, DateTimeOffset.Now);
+            return parsed is not null &&
+                   parsed.Primary?.RemainingPercent == 100 &&
+                   parsed.Primary?.ResetsAt is null;
+        });
+
         Check("Gemini agy error envelope returns null", () =>
             GeminiQuotaService.ParseAgyOutput("""{"status":"ERROR","error":"Not authenticated"}""", DateTimeOffset.Now) is null);
 

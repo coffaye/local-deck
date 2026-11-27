@@ -1,4 +1,4 @@
-# 桌仪 · LocalDeck 1.7.0
+# 桌仪 · LocalDeck 1.7.1
 
 一个 Windows 11 桌面迷你仪表：CPU、内存、温度、NVIDIA GPU、网络，以及 Codex、Gemini、Claude、DeepSeek 四路额度与余额，全部放进一块 **360 × 360** 的方形 LCD。
 
