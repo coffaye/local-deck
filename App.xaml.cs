@@ -40,21 +40,26 @@ public partial class App : Application
 
         // Only one visible dashboard. Re-clicking the exe brings the existing window
         // forward instead of creating another background process.
-        try
+        // Skip the single-instance gate during --capture so screenshots can be rendered
+        // without interfering with a live instance running in the tray.
+        if (CaptureDirectory is null)
         {
-            _instanceMutex = new Mutex(initiallyOwned: true,
-                name: @"Local\LocalDeck.SingleInstance", createdNew: out var createdNew);
-            _ownsMutex = createdNew;
-            if (!createdNew)
+            try
             {
-                BringExistingWindowForward();
-                Shutdown(0);
-                return;
+                _instanceMutex = new Mutex(initiallyOwned: true,
+                    name: @"Local\LocalDeck.SingleInstance", createdNew: out var createdNew);
+                _ownsMutex = createdNew;
+                if (!createdNew)
+                {
+                    BringExistingWindowForward();
+                    Shutdown(0);
+                    return;
+                }
             }
-        }
-        catch
-        {
-            // A mutex failure must not prevent the app from starting.
+            catch
+            {
+                // A mutex failure must not prevent the app from starting.
+            }
         }
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;

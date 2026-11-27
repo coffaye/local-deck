@@ -1,6 +1,6 @@
-# 桌仪 · LocalDeck 1.6.1
+# 桌仪 · LocalDeck 1.7.0
 
-一个 Windows 11 桌面迷你仪表：CPU、内存、温度、NVIDIA GPU、网络，以及 Codex 额度、Claude 余额、DeepSeek 余额，全部放进一块 **360 × 360** 的方形 LCD。
+一个 Windows 11 桌面迷你仪表：CPU、内存、温度、NVIDIA GPU、网络，以及 Codex、Gemini、Claude、DeepSeek 四路额度与余额，全部放进一块 **360 × 360** 的方形 LCD。
 
 > **GitHub 源码**：https://github.com/coffaye/local-deck  
 > **下载最新版**：https://github.com/coffaye/local-deck/releases/latest
@@ -14,18 +14,20 @@
 ## 当前版本
 
 - **双主题**：设置 → 窗口右侧选择「性能优先 / 额度优先」，保存后立即切换并持久化。
-  - **性能优先**：CPU / 内存大数字在上，历史曲线居中，额度条在底部。
-  - **额度优先**：额度条置顶并放大 Codex / Claude / DeepSeek 数字；CPU / 内存缩小，曲线下移，传感器行留底部。
-- **额度条三栏**：Codex 缩窄以容纳 Claude 和 DeepSeek，窗口总尺寸仍是 360 × 360；Codex 的 5 小时 / 7 天重置时间分别显示在各自数值下方。
-- **Claude 余额**：自动读取 Claude CLI 的 `~/.claude/settings.json`，用其中的 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL` 推导 `/v1/usage`，显示供应商预付费余额和今日消耗；配置已并入「数据源」卡片，可覆盖查询地址或 Key。
-- **统一余额排版**：Claude 与 DeepSeek 的货币符号、余额字号和高度一致；Claude 只在下方多一行「今日」消耗。
-- **设置滚动**：内容超出时使用深紫主题的竖向滚动条，「保存并应用」仍固定在底部。
+  - **性能优先**：CPU / 内存大数字在上，历史曲线居中，2×2 额度区在底部。
+  - **额度优先**：2×2 额度区置顶并放大四路数值；CPU / 内存缩小，曲线下移，传感器行留底部。
+- **2×2 四宫格额度区**：在保持 `360 × 360` 窗口不变的前提下升级为 2×2 布局：
+  - 上排：`CODEX`（5 小时 / 7 天，各自重置时间显示在对应数值下方）｜`GEMINI`（通过本机 `agy` CLI 只读查询 Antigravity 5 小时 / 7 天额度与重置倒计时）。
+  - 下排：`CLAUDE`（`$余额` + 今日实际消耗）｜`DEEPSEEK`（`¥余额`），两张余额卡的货币符号、余额字号与基线完全统一。
+- **Gemini 额度（Antigravity CLI）**：自动检测本机 `agy` CLI（支持在设置 → 数据源 → `Gemini (agy) 路径` 自动检测、手动浏览与测试），只读执行 `/usage` 刷新额度，不发送模型请求，也不读取或落盘 OAuth Token。
+- **Claude 余额**：自动读取 Claude CLI 的 `~/.claude/settings.json`，用其中的 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL` 推导 `/v1/usage`，显示供应商预付费余额和今日消耗；配置并入「数据源」卡片，可覆盖查询地址或 Key。
+- **设置滚动**：内容超出时使用深紫主题的竖向滚动条，「保存并应用」固定在底部。
 - **360 × 360 固定方形窗口**，布局紧凑，不支持拖拽缩放。
 - **背景透明度滑条**：位于顶部图钉左侧，只调整背景 alpha，文字、数字和控件保持不透明。
 - **标题栏隐藏**：失焦时整块窗框上沿下移、窗口高度缩短，正文位置不变；重新聚焦恢复。
 - **系统托盘**：点 X 隐藏到通知区（电池 / 时间所在区域）；左键打开，右键菜单提供「打开 / 退出」。Windows 11 新图标可能在 `^` 里，展开后拖出一次即可固定。
 - **启动优化**：硬件传感器在后台初始化，窗口约 1 秒出现，CPU / 内存先显示，核显数据随后补齐。
-- **设置页**：三组卡片；主题、刷新间隔、窗口开关和密钥设置；保存按钮固定在底部，不会被裁切。
+- **设置页**：三组卡片；主题、刷新间隔、窗口开关和数据源配置；保存按钮固定在底部，不会被裁切。
 
 ## 下载与运行
 
@@ -68,6 +70,13 @@ Release 资产：
 
 不会刷新或写入 Codex token，也不会把 token 写入日志或发送给第三方。
 
+### Gemini 额度
+
+通过本机官方 Antigravity CLI（`agy`）以只读方式执行 `/usage` 读取 5 小时 / 7 天剩余额度与重置倒计时，不发送模型请求，也不读取或持久化 Google OAuth Token：
+
+- 自动扫描 PATH 与常见安装目录中的 `agy`；也可在设置 → 数据源 → `Gemini (agy) 路径` 中浏览指定并测试；
+- 未安装 `agy` CLI 时卡片优雅显示「未配置」，不影响其他卡片。
+
 ### Claude 余额
 
 自动读取 `%USERPROFILE%\.claude\settings.json` 的 `env.ANTHROPIC_AUTH_TOKEN` 和 `env.ANTHROPIC_BASE_URL`，默认请求：
@@ -90,7 +99,7 @@ Release 资产：
 
 设置页为三组卡片：
 
-- **数据源**：Codex 路径、DeepSeek 密钥、Claude 查询地址 / Key（同一张卡片）；支持自动检测、测试和清除。
+- **数据源**：Codex 路径、DeepSeek 密钥、Claude 查询地址 / Key、Gemini (`agy`) 路径（同一张卡片）；支持自动检测、浏览、测试和清除。
 - **刷新**：统计网卡、额度刷新（1 / 5 / 15 / 30 分钟）、硬件刷新。
 - **窗口**：主题、窗口置顶、开机启动、标题栏隐藏。
 - 底部固定「保存并应用」；保存后主题、刷新间隔和开关立即生效。
@@ -130,6 +139,7 @@ pwsh .\build.ps1
 - Codex 额度依赖本机登录态；接口不可用时会回退到本地快照。
 - Windows 11 的托盘图标默认可能进入 `^`；应用会尝试设为常显，未生效时拖出一次即可。
 - 未做代码签名，首次直接运行可能出现 SmartScreen；推荐使用启动脚本。
+- Gemini 额度依赖本机已安装并登录的官方 `agy` CLI；未安装时显示「未配置」。
 - Claude 余额来自 token 供应商的 `/v1/usage` 接口，字段和语义由供应商决定；默认按 AIJWS 的 `balance` / `usage.today.actual_cost` 解析，换供应商时可在设置里改查询地址。
 - DeepSeek 余额需要自己的 API Key；仓库不内置任何账户凭据。
 

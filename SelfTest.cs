@@ -124,6 +124,36 @@ public static class SelfTest
             CodexQuotaService.FormatReset(
                 DateTimeOffset.Now.AddMinutes(38).AddSeconds(30).ToUnixTimeSeconds(), DateTimeOffset.Now) == "38分后");
 
+        Check("Gemini agy groups JSON parse", () =>
+        {
+            const string json = """
+            {"planType":"google_ai_pro","response":{"groups":[{"displayName":"Claude and GPT models","buckets":[{"bucketId":"3p-weekly","window":"7d","remainingFraction":1.0,"resetTime":"2026-12-04T10:00:00Z"}]},{"displayName":"Gemini Models","buckets":[{"bucketId":"gemini-5h","displayName":"Five Hour","window":"5h","remainingFraction":0.86,"resetTime":"2026-11-27T15:00:00Z"},{"bucketId":"gemini-weekly","displayName":"Weekly","window":"7d","remainingFraction":0.92,"resetTime":"2026-12-02T10:00:00Z"}]}]}}
+            """;
+            var parsed = GeminiQuotaService.ParseAgyOutput(json, DateTimeOffset.Now);
+            return parsed is not null &&
+                   parsed.PlanType == "PRO" &&
+                   parsed.Primary?.RemainingPercent == 86 &&
+                   parsed.Primary?.WindowMinutes == 300 &&
+                   parsed.Secondary?.RemainingPercent == 92 &&
+                   parsed.Secondary?.WindowMinutes == 10080;
+        });
+
+        Check("Gemini agy envelope text parse", () =>
+        {
+            const string json = """
+            {"status":"SUCCESS","response":"Gemini Models\nFive Hour (5h): 74% remaining (resets in 2h 15m)\nWeekly (7d): 90% remaining (resets in 5d)"}
+            """;
+            var parsed = GeminiQuotaService.ParseAgyOutput(json, DateTimeOffset.Now);
+            return parsed is not null &&
+                   parsed.Primary?.RemainingPercent == 74 &&
+                   parsed.Primary?.ResetsAt is not null &&
+                   parsed.Secondary?.RemainingPercent == 90 &&
+                   parsed.Secondary?.ResetsAt is not null;
+        });
+
+        Check("Gemini agy error envelope returns null", () =>
+            GeminiQuotaService.ParseAgyOutput("""{"status":"ERROR","error":"Not authenticated"}""", DateTimeOffset.Now) is null);
+
         Check("memory sensor", () =>
         {
             using var sampler = new SystemSampler();

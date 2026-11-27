@@ -103,6 +103,7 @@ public sealed class AppSettings
     public bool ApiKeyCameFromEnvironment { get; set; }
 
     public string CodexPath { get; set; } = string.Empty;
+    public string AgyPath { get; set; } = string.Empty;
     public string NetworkAdapterId { get; set; } = string.Empty;
     public int SampleSeconds { get; set; } = 2;
     public int QuotaRefreshMinutes { get; set; } = 5;

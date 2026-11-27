@@ -439,6 +439,208 @@ public sealed class ClaudeBalanceCardViewModel : ObservableObject
     }
 }
 
+public sealed class GeminiQuotaCardViewModel : ObservableObject
+{
+    private string _planText = string.Empty;
+    private string _statusText = "未配置";
+    private string _primaryLabel = "5 小时";
+    private string _primaryRemainingText = "—";
+    private double _primaryRemaining;
+    private string _primaryResetText = "未配置";
+    private string _secondaryLabel = "7 天";
+    private string _secondaryRemainingText = "—";
+    private double _secondaryRemaining;
+    private string _secondaryResetText = "—";
+    private string _sourceText = "尚未同步";
+    private string _hintText = "通过本机 agy CLI 只读获取额度";
+    private bool _hasData;
+    private bool _isConfigured;
+    private bool _isUnavailable;
+    private bool _isLoading;
+    private Brush _statusBrush = UiBrushes.Muted;
+    private Brush _primaryBrush = UiBrushes.Muted;
+    private Brush _secondaryBrush = UiBrushes.Muted;
+
+    public string PlanText { get => _planText; set => Set(ref _planText, value); }
+    public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
+    public string PrimaryLabel { get => _primaryLabel; set => Set(ref _primaryLabel, value); }
+    public string PrimaryRemainingText { get => _primaryRemainingText; set => Set(ref _primaryRemainingText, value); }
+    public double PrimaryRemaining { get => _primaryRemaining; set => Set(ref _primaryRemaining, value); }
+    public string PrimaryResetText { get => _primaryResetText; set => Set(ref _primaryResetText, value); }
+    public string SecondaryLabel { get => _secondaryLabel; set => Set(ref _secondaryLabel, value); }
+    public string SecondaryRemainingText { get => _secondaryRemainingText; set => Set(ref _secondaryRemainingText, value); }
+    public double SecondaryRemaining { get => _secondaryRemaining; set => Set(ref _secondaryRemaining, value); }
+    public string SecondaryResetText { get => _secondaryResetText; set => Set(ref _secondaryResetText, value); }
+    public string SourceText { get => _sourceText; set => Set(ref _sourceText, value); }
+    public string HintText { get => _hintText; set => Set(ref _hintText, value); }
+    public bool HasData { get => _hasData; set => Set(ref _hasData, value); }
+    public bool IsConfigured { get => _isConfigured; set => Set(ref _isConfigured, value); }
+    public bool IsUnavailable { get => _isUnavailable; set => Set(ref _isUnavailable, value); }
+    public bool IsLoading { get => _isLoading; set => Set(ref _isLoading, value); }
+    public Brush StatusBrush { get => _statusBrush; set => Set(ref _statusBrush, value); }
+    public Brush PrimaryBrush { get => _primaryBrush; set => Set(ref _primaryBrush, value); }
+    public Brush SecondaryBrush { get => _secondaryBrush; set => Set(ref _secondaryBrush, value); }
+
+    public void BeginLoading(bool configured)
+    {
+        IsConfigured = configured;
+        IsLoading = true;
+        IsUnavailable = false;
+        if (HasData)
+        {
+            StatusText = "刷新中";
+            StatusBrush = UiBrushes.Muted;
+        }
+        else
+        {
+            StatusText = configured ? "读取中" : "未配置";
+            StatusBrush = UiBrushes.Muted;
+            HintText = configured ? "正在通过 agy CLI 读取额度" : "未检测到 agy CLI，可在设置中指定路径";
+        }
+    }
+
+    public void Apply(GeminiQuotaResult result)
+    {
+        HasData = true;
+        IsConfigured = true;
+        IsUnavailable = false;
+        IsLoading = false;
+        PlanText = string.IsNullOrWhiteSpace(result.PlanType) ? string.Empty : result.PlanType.ToUpperInvariant();
+        SourceText = $"{result.Source} · {result.ObservedAt:HH:mm}";
+
+        if (result.Primary is not null)
+        {
+            ApplyWindow(result.Primary, ref _primaryLabel, ref _primaryRemainingText,
+                ref _primaryRemaining, ref _primaryResetText, ref _primaryBrush,
+                nameof(PrimaryLabel), nameof(PrimaryRemainingText), nameof(PrimaryRemaining),
+                nameof(PrimaryResetText), nameof(PrimaryBrush));
+        }
+        else
+        {
+            PrimaryLabel = "5 小时";
+            PrimaryRemainingText = "—";
+            PrimaryRemaining = 0;
+            PrimaryResetText = "暂无窗口";
+            PrimaryBrush = UiBrushes.Muted;
+        }
+
+        if (result.Secondary is not null)
+        {
+            ApplyWindow(result.Secondary, ref _secondaryLabel, ref _secondaryRemainingText,
+                ref _secondaryRemaining, ref _secondaryResetText, ref _secondaryBrush,
+                nameof(SecondaryLabel), nameof(SecondaryRemainingText), nameof(SecondaryRemaining),
+                nameof(SecondaryResetText), nameof(SecondaryBrush));
+        }
+        else
+        {
+            SecondaryLabel = "7 天";
+            SecondaryRemainingText = "—";
+            SecondaryRemaining = 0;
+            SecondaryResetText = "暂无窗口";
+            SecondaryBrush = UiBrushes.Muted;
+        }
+
+        var lowestRemaining = new[] { result.Primary, result.Secondary }
+            .Where(w => w is not null)
+            .Select(w => w!.RemainingPercent)
+            .DefaultIfEmpty(100)
+            .Min();
+
+        if (lowestRemaining <= 0)
+        {
+            StatusText = "已用尽";
+            StatusBrush = UiBrushes.Orange;
+            HintText = "额度已用尽 · 等待重置";
+        }
+        else if (lowestRemaining <= 25)
+        {
+            StatusText = "注意";
+            StatusBrush = UiBrushes.Amber;
+            HintText = "Gemini 额度偏低";
+        }
+        else
+        {
+            StatusText = "正常";
+            StatusBrush = UiBrushes.Lime;
+            HintText = $"通过 {result.Source} 只读同步 · {result.ObservedAt:HH:mm}";
+        }
+    }
+
+    private void ApplyWindow(GeminiQuotaWindow window, ref string label, ref string remainingText,
+        ref double remaining, ref string resetText, ref Brush brush, string labelProperty,
+        string remainingTextProperty, string remainingProperty, string resetProperty, string brushProperty)
+    {
+        var left = Math.Clamp(window.RemainingPercent, 0, 100);
+        var used = 100 - left;
+        var tone = used >= 90 ? UiBrushes.Orange : used >= 70 ? UiBrushes.Amber : UiBrushes.Lime;
+
+        label = !string.IsNullOrWhiteSpace(window.Label)
+            ? window.Label
+            : CodexQuotaService.FormatWindowLabel(window.WindowMinutes);
+        remainingText = $"{left}%";
+        remaining = left;
+        resetText = CodexQuotaService.FormatReset(window.ResetsAt, DateTimeOffset.Now);
+        brush = tone;
+
+        OnPropertyChanged(labelProperty);
+        OnPropertyChanged(remainingTextProperty);
+        OnPropertyChanged(remainingProperty);
+        OnPropertyChanged(resetProperty);
+        OnPropertyChanged(brushProperty);
+    }
+
+    public void NotConfigured(string message = "未检测到 agy CLI，可在设置中指定路径")
+    {
+        HasData = false;
+        IsConfigured = false;
+        IsLoading = false;
+        IsUnavailable = false;
+        PlanText = string.Empty;
+        StatusText = "未配置";
+        StatusBrush = UiBrushes.Muted;
+        PrimaryLabel = "5 小时";
+        SecondaryLabel = "7 天";
+        PrimaryRemainingText = "—";
+        SecondaryRemainingText = "—";
+        PrimaryRemaining = 0;
+        SecondaryRemaining = 0;
+        PrimaryResetText = "待安装 agy";
+        SecondaryResetText = "—";
+        PrimaryBrush = UiBrushes.Muted;
+        SecondaryBrush = UiBrushes.Muted;
+        HintText = message;
+        SourceText = "尚未同步";
+    }
+
+    public void Fail(string message, bool configured = true)
+    {
+        IsConfigured = configured;
+        IsLoading = false;
+        IsUnavailable = true;
+        if (!HasData)
+        {
+            PlanText = string.Empty;
+            PrimaryRemainingText = "—";
+            SecondaryRemainingText = "—";
+            PrimaryRemaining = 0;
+            SecondaryRemaining = 0;
+            PrimaryResetText = "读取失败";
+            SecondaryResetText = "—";
+            PrimaryBrush = UiBrushes.Muted;
+            SecondaryBrush = UiBrushes.Muted;
+            SourceText = "同步失败";
+        }
+        else
+        {
+            SourceText = "显示上次结果 · 刷新失败";
+        }
+
+        StatusText = configured ? "不可用" : "未配置";
+        StatusBrush = configured ? UiBrushes.Orange : UiBrushes.Muted;
+        HintText = message;
+    }
+}
+
 public sealed class DashboardViewModel : ObservableObject
 {
     private const int HistorySize = 42;
@@ -472,6 +674,7 @@ public sealed class DashboardViewModel : ObservableObject
     private Brush _tempBrush = UiBrushes.Lime;
 
     public CodexQuotaCardViewModel Codex { get; } = new();
+    public GeminiQuotaCardViewModel Gemini { get; } = new();
     public ClaudeBalanceCardViewModel Claude { get; } = new();
     public DeepSeekBalanceCardViewModel DeepSeek { get; } = new();
 
@@ -600,6 +803,10 @@ public sealed class DashboardViewModel : ObservableObject
             new CodexQuotaWindow(100, 300, DateTimeOffset.Now.AddMinutes(39).ToUnixTimeSeconds()),
             new CodexQuotaWindow(0, 10080, DateTimeOffset.Now.AddDays(6).ToUnixTimeSeconds()),
             "plus", 2, "APP-SERVER", now, false, null));
+        Gemini.Apply(new GeminiQuotaResult(
+            new GeminiQuotaWindow(86, 300, DateTimeOffset.Now.AddHours(2).AddMinutes(14).ToUnixTimeSeconds(), "5 小时"),
+            new GeminiQuotaWindow(92, 10080, DateTimeOffset.Now.AddDays(5).ToUnixTimeSeconds(), "7 天"),
+            "pro", "AGY-CLI", now, false, null));
         Claude.Apply(new ClaudeUsageResult(
             true, 76.18m, 0.89m, "USD", "unrestricted", now, "https://api.aijws.com/v1/usage"));
         DeepSeek.Apply(new DeepSeekBalanceResult(

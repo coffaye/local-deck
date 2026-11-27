@@ -23,11 +23,13 @@ public partial class MainWindow : Window
     private readonly ClaudeQuotaService _claudeService = new();
     private readonly SemaphoreSlim _sampleGate = new(1, 1);
     private readonly SemaphoreSlim _codexGate = new(1, 1);
+    private readonly SemaphoreSlim _geminiGate = new(1, 1);
     private readonly SemaphoreSlim _claudeGate = new(1, 1);
     private readonly SemaphoreSlim _deepSeekGate = new(1, 1);
 
     private AppSettings _settings;
     private CodexQuotaService _codexService;
+    private GeminiQuotaService _geminiService;
     private CancellationTokenSource? _lifetimeCts;
     private CancellationTokenSource? _hardwareCts;
     private CancellationTokenSource? _quotaCts;
@@ -56,6 +58,7 @@ public partial class MainWindow : Window
         _captureDirectory = captureDirectory;
         _settings = SettingsStore.Load();
         _codexService = new CodexQuotaService(_settings.CodexPath);
+        _geminiService = new GeminiQuotaService(_settings.AgyPath);
         DataContext = _viewModel;
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -82,33 +85,35 @@ public partial class MainWindow : Window
             Grid.SetRow(ChartPanel, 2);
             Grid.SetRow(SpecsRow, 3);
 
-            MonitorPage.RowDefinitions[0].Height = new GridLength(140);
-            MonitorPage.RowDefinitions[1].Height = new GridLength(70);
-            MonitorPage.RowDefinitions[2].Height = new GridLength(58);
-            MonitorPage.RowDefinitions[3].Height = new GridLength(48);
+            MonitorPage.RowDefinitions[0].Height = new GridLength(163);
+            MonitorPage.RowDefinitions[1].Height = new GridLength(65);
+            MonitorPage.RowDefinitions[2].Height = new GridLength(46);
+            MonitorPage.RowDefinitions[3].Height = new GridLength(44);
 
-            HeroRow.RowDefinitions[0].Height = new GridLength(10);
-            HeroRow.RowDefinitions[1].Height = new GridLength(40);
-            HeroRow.RowDefinitions[2].Height = new GridLength(6);
-            HeroRow.RowDefinitions[3].Height = new GridLength(14);
-            CpuValueText.FontSize = 30;
-            MemoryValueText.FontSize = 30;
-            CpuPercentUnit.FontSize = 10;
-            MemoryPercentUnit.FontSize = 10;
+            HeroRow.Margin = new Thickness(2, 3, 2, 0);
+            HeroRow.RowDefinitions[0].Height = new GridLength(13);
+            HeroRow.RowDefinitions[1].Height = new GridLength(31);
+            HeroRow.RowDefinitions[2].Height = new GridLength(5);
+            HeroRow.RowDefinitions[3].Height = new GridLength(13);
+            CpuLabelText.FontSize = 8;
+            MemoryLabelText.FontSize = 8;
+            CpuValueText.FontSize = 26;
+            MemoryValueText.FontSize = 26;
+            CpuPercentUnit.FontSize = 9.5;
+            MemoryPercentUnit.FontSize = 9.5;
             CpuBar.Height = 4;
             MemoryBar.Height = 4;
-            CodexPrimaryLabelText.Visibility = Visibility.Visible;
-            CodexSecondaryLabelText.Visibility = Visibility.Visible;
-            CodexPrimaryLabelText.FontSize = 9;
-            CodexPrimaryLabelText.FontWeight = FontWeights.SemiBold;
-            CodexSecondaryLabelText.FontSize = 9;
-            CodexSecondaryLabelText.FontWeight = FontWeights.SemiBold;
-            CodexPrimaryStack.Margin = new Thickness(0, 23, 0, 0);
-            CodexSecondaryStack.Margin = new Thickness(0, 23, 0, 0);
-            CodexPrimaryValueText.FontSize = 19;
-            CodexSecondaryValueText.FontSize = 19;
+
+            ApplyWindowCardSizing(
+                labelFontSize: 7.5, labelWeight: FontWeights.SemiBold,
+                valueFontSize: 19, barHeight: 3.5, resetFontSize: 6.0);
+            ClaudeBalancePanel.Margin = new Thickness(0, 6, 0, 0);
+            DeepSeekBalancePanel.Margin = new Thickness(0, 6, 0, 0);
+            ClaudeCurrencyText.FontSize = 8.5;
+            DeepSeekCurrencyText.FontSize = 8.5;
             ClaudeBalanceValueText.FontSize = 24;
             DeepSeekBalanceValueText.FontSize = 24;
+            ClaudeTodayText.FontSize = 7;
         }
         else
         {
@@ -117,33 +122,67 @@ public partial class MainWindow : Window
             Grid.SetRow(SpecsRow, 2);
             Grid.SetRow(QuotaPanel, 3);
 
-            MonitorPage.RowDefinitions[0].Height = new GridLength(84);
-            MonitorPage.RowDefinitions[1].Height = new GridLength(86);
-            MonitorPage.RowDefinitions[2].Height = new GridLength(44);
+            MonitorPage.RowDefinitions[0].Height = new GridLength(75);
+            MonitorPage.RowDefinitions[1].Height = new GridLength(55);
+            MonitorPage.RowDefinitions[2].Height = new GridLength(40);
             MonitorPage.RowDefinitions[3].Height = new GridLength(1, GridUnitType.Star);
 
-            HeroRow.RowDefinitions[0].Height = new GridLength(11);
-            HeroRow.RowDefinitions[1].Height = new GridLength(50);
-            HeroRow.RowDefinitions[2].Height = new GridLength(7);
-            HeroRow.RowDefinitions[3].Height = new GridLength(16);
-            CpuValueText.FontSize = 40;
-            MemoryValueText.FontSize = 40;
-            CpuPercentUnit.FontSize = 12;
-            MemoryPercentUnit.FontSize = 12;
-            CpuBar.Height = 6;
-            MemoryBar.Height = 6;
-            CodexPrimaryLabelText.Visibility = Visibility.Visible;
-            CodexSecondaryLabelText.Visibility = Visibility.Visible;
-            CodexPrimaryLabelText.FontSize = 6;
-            CodexPrimaryLabelText.FontWeight = FontWeights.Normal;
-            CodexSecondaryLabelText.FontSize = 6;
-            CodexSecondaryLabelText.FontWeight = FontWeights.Normal;
-            CodexPrimaryStack.Margin = new Thickness(0);
-            CodexSecondaryStack.Margin = new Thickness(0);
-            CodexPrimaryValueText.FontSize = 18;
-            CodexSecondaryValueText.FontSize = 18;
+            HeroRow.Margin = new Thickness(2, 0, 2, 0);
+            HeroRow.RowDefinitions[0].Height = new GridLength(14);
+            HeroRow.RowDefinitions[1].Height = new GridLength(41);
+            HeroRow.RowDefinitions[2].Height = new GridLength(6);
+            HeroRow.RowDefinitions[3].Height = new GridLength(14);
+            CpuLabelText.FontSize = 8.5;
+            MemoryLabelText.FontSize = 8.5;
+            CpuValueText.FontSize = 36;
+            MemoryValueText.FontSize = 36;
+            CpuPercentUnit.FontSize = 11;
+            MemoryPercentUnit.FontSize = 11;
+            CpuBar.Height = 5;
+            MemoryBar.Height = 5;
+
+            ApplyWindowCardSizing(
+                labelFontSize: 6.0, labelWeight: FontWeights.Normal,
+                valueFontSize: 16, barHeight: 3.0, resetFontSize: 5.5);
+            ClaudeBalancePanel.Margin = new Thickness(0, 4, 0, 0);
+            DeepSeekBalancePanel.Margin = new Thickness(0, 4, 0, 0);
+            ClaudeCurrencyText.FontSize = 8;
+            DeepSeekCurrencyText.FontSize = 8;
             ClaudeBalanceValueText.FontSize = 22;
             DeepSeekBalanceValueText.FontSize = 22;
+            ClaudeTodayText.FontSize = 6.5;
+        }
+    }
+
+    private void ApplyWindowCardSizing(double labelFontSize, FontWeight labelWeight,
+        double valueFontSize, double barHeight, double resetFontSize)
+    {
+        foreach (var label in new[] { CodexPrimaryLabelText, CodexSecondaryLabelText, GeminiPrimaryLabelText, GeminiSecondaryLabelText })
+        {
+            label.Visibility = Visibility.Visible;
+            label.FontSize = labelFontSize;
+            label.FontWeight = labelWeight;
+        }
+
+        foreach (var value in new[] { CodexPrimaryValueText, CodexSecondaryValueText, GeminiPrimaryValueText, GeminiSecondaryValueText })
+        {
+            value.FontSize = valueFontSize;
+        }
+
+        foreach (var bar in new[] { CodexPrimaryBar, CodexSecondaryBar, GeminiPrimaryBar, GeminiSecondaryBar })
+        {
+            bar.Height = barHeight;
+        }
+
+        foreach (var reset in new[]
+                 {
+                     CodexPrimaryResetPrefix, CodexPrimaryResetText,
+                     CodexSecondaryResetPrefix, CodexSecondaryResetText,
+                     GeminiPrimaryResetPrefix, GeminiPrimaryResetText,
+                     GeminiSecondaryResetPrefix, GeminiSecondaryResetText
+                 })
+        {
+            reset.FontSize = resetFontSize;
         }
     }
 
@@ -227,6 +266,14 @@ public partial class MainWindow : Window
         }
 
         _viewModel.Codex.BeginLoading();
+        if (_geminiService.FindAgyExecutable() is not null)
+        {
+            _viewModel.Gemini.BeginLoading(true);
+        }
+        else
+        {
+            _viewModel.Gemini.NotConfigured();
+        }
         var claudeConfig = ClaudeConfigReader.Resolve(_settings);
         if (claudeConfig.IsConfigured)
         {
@@ -263,6 +310,9 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(directory);
             await Task.Delay(initialDelayMs);
 
+            var originalTheme = Math.Clamp(_settings.UiTheme, 0, 1);
+            ApplyTheme(0);
+            await Task.Delay(200);
             await CaptureCurrentAsync(Path.Combine(directory, "01-monitor.png"));
             ShowSettings_Click(this, new RoutedEventArgs());
             await Task.Delay(350);
@@ -272,6 +322,12 @@ public partial class MainWindow : Window
             await Task.Delay(300);
             await CaptureCurrentAsync(Path.Combine(directory, "03-monitor-2x.png"), 2.0);
             await CaptureCurrentAsync(Path.Combine(directory, "04-monitor-1x.png"), 1.0);
+
+            ApplyTheme(1);
+            await Task.Delay(250);
+            await CaptureCurrentAsync(Path.Combine(directory, "06-monitor-quota-2x.png"), 2.0);
+            await CaptureCurrentAsync(Path.Combine(directory, "07-monitor-quota-1x.png"), 1.0);
+            ApplyTheme(originalTheme);
 
             ShowSettings_Click(this, new RoutedEventArgs());
             await Task.Delay(300);
@@ -398,9 +454,44 @@ public partial class MainWindow : Window
     {
         if (App.DemoMode) return;
         var codex = RefreshCodexAsync(cancellationToken);
+        var gemini = RefreshGeminiAsync(cancellationToken);
         var claude = RefreshClaudeAsync(cancellationToken);
         var deepSeek = RefreshDeepSeekAsync(cancellationToken);
-        await Task.WhenAll(codex, claude, deepSeek);
+        await Task.WhenAll(codex, gemini, claude, deepSeek);
+    }
+
+    private async Task RefreshGeminiAsync(CancellationToken cancellationToken)
+    {
+        if (_geminiService.FindAgyExecutable() is null)
+        {
+            await Dispatcher.InvokeAsync(() => _viewModel.Gemini.NotConfigured());
+            return;
+        }
+
+        if (!await _geminiGate.WaitAsync(0, cancellationToken)) return;
+        try
+        {
+            await Dispatcher.InvokeAsync(() => _viewModel.Gemini.BeginLoading(true));
+            var result = await Task.Run(() => _geminiService.GetQuotaAsync(cancellationToken),
+                cancellationToken);
+            await Dispatcher.InvokeAsync(() => _viewModel.Gemini.Apply(result));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Closing.
+        }
+        catch (GeminiQuotaException ex)
+        {
+            await Dispatcher.InvokeAsync(() => _viewModel.Gemini.Fail(ex.Message, true));
+        }
+        catch (Exception)
+        {
+            await Dispatcher.InvokeAsync(() => _viewModel.Gemini.Fail("Gemini 额度刷新失败", true));
+        }
+        finally
+        {
+            _geminiGate.Release();
+        }
     }
 
     private async Task RefreshCodexAsync(CancellationToken cancellationToken)
@@ -543,6 +634,11 @@ public partial class MainWindow : Window
             ? claudeConfig.QueryUrl ?? string.Empty
             : _settings.ClaudeQueryUrl;
         UpdateClaudeSettingsStatus(claudeConfig);
+
+        AgyPathBox.Text = string.IsNullOrWhiteSpace(_settings.AgyPath)
+            ? _geminiService.FindAgyExecutable() ?? string.Empty
+            : _settings.AgyPath;
+        UpdateGeminiSettingsStatus();
 
         LoadNetworkChoices();
         SelectQuotaRefresh(_settings.QuotaRefreshMinutes);
@@ -830,6 +926,100 @@ public partial class MainWindow : Window
         ClaudeStatusText.Text = "已清除自定义 Key · 保存后改用 Claude CLI 配置";
     }
 
+    private void UpdateGeminiSettingsStatus()
+    {
+        var configured = AgyPathBox.Text.Trim();
+        var detected = GeminiQuotaService.FindAgyExecutable(configured);
+        if (!string.IsNullOrWhiteSpace(detected))
+        {
+            GeminiStatusText.Text = "已就绪 · 只读 agy /usage";
+            GeminiStatusText.Foreground = UiBrushes.Lime;
+            GeminiStatusText.ToolTip = detected;
+        }
+        else
+        {
+            GeminiStatusText.Text = "未检测到 agy CLI";
+            GeminiStatusText.Foreground = UiBrushes.Muted;
+            GeminiStatusText.ToolTip = null;
+        }
+    }
+
+    private void AutoDetectAgy_Click(object sender, RoutedEventArgs e)
+    {
+        var detected = GeminiQuotaService.FindAgyExecutable(string.Empty);
+        if (string.IsNullOrWhiteSpace(detected))
+        {
+            AgyPathBox.Text = string.Empty;
+            GeminiStatusText.Text = "未检测到 agy CLI，可安装后重试或手动浏览";
+            GeminiStatusText.Foreground = UiBrushes.Amber;
+            GeminiStatusText.ToolTip = null;
+            return;
+        }
+
+        AgyPathBox.Text = detected;
+        GeminiStatusText.Text = "自动检测可用 · 可测试或保存";
+        GeminiStatusText.Foreground = UiBrushes.Lime;
+        GeminiStatusText.ToolTip = detected;
+    }
+
+    private void BrowseAgy_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择 Antigravity CLI (agy)",
+            Filter = "Antigravity CLI (agy.exe;agy.cmd)|agy.exe;agy.cmd;agy.bat|可执行文件 (*.exe;*.cmd)|*.exe;*.cmd;*.bat",
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            AgyPathBox.Text = dialog.FileName;
+            GeminiStatusText.Text = "已选择自定义 agy 路径 · 可测试或保存";
+            GeminiStatusText.Foreground = UiBrushes.Lime;
+            GeminiStatusText.ToolTip = dialog.FileName;
+        }
+    }
+
+    private async void TestGemini_Click(object sender, RoutedEventArgs e)
+    {
+        var path = AgyPathBox.Text.Trim();
+        var probe = new GeminiQuotaService(path);
+        var resolved = probe.FindAgyExecutable();
+        if (string.IsNullOrWhiteSpace(resolved))
+        {
+            GeminiStatusText.Foreground = UiBrushes.Orange;
+            GeminiStatusText.Text = "未检测到 agy CLI，请先安装或浏览指定路径";
+            return;
+        }
+
+        var button = sender as Button;
+        if (button is not null) button.IsEnabled = false;
+        GeminiStatusText.Foreground = UiBrushes.Muted;
+        GeminiStatusText.Text = "正在通过 agy 查询额度…";
+        try
+        {
+            var result = await Task.Run(() => probe.GetQuotaAsync(CancellationToken.None));
+            _viewModel.Gemini.Apply(result);
+            var p = result.Primary is not null ? $"{result.Primary.RemainingPercent}%" : "—";
+            var s = result.Secondary is not null ? $" / {result.Secondary.RemainingPercent}%" : string.Empty;
+            GeminiStatusText.Foreground = UiBrushes.Lime;
+            GeminiStatusText.Text = $"查询成功 · 剩余 {p}{s}（尚未保存）";
+        }
+        catch (GeminiQuotaException ex)
+        {
+            GeminiStatusText.Foreground = UiBrushes.Orange;
+            GeminiStatusText.Text = ex.Message;
+        }
+        catch (Exception)
+        {
+            GeminiStatusText.Foreground = UiBrushes.Orange;
+            GeminiStatusText.Text = "agy 查询失败";
+        }
+        finally
+        {
+            if (button is not null) button.IsEnabled = true;
+        }
+    }
+
     private void BrowseCodex_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
@@ -921,6 +1111,7 @@ public partial class MainWindow : Window
             : _clearClaudeKeyPending ? string.Empty : null;
 
         _settings.CodexPath = CodexPathBox.Text.Trim();
+        _settings.AgyPath = AgyPathBox.Text.Trim();
         _settings.ClaudeQueryUrl = ClaudeQueryUrlBox.Text.Trim();
         _settings.NetworkAdapterId =
             NetworkCombo.SelectedItem is AdapterChoice choice ? choice.Id : string.Empty;
@@ -981,7 +1172,9 @@ public partial class MainWindow : Window
         StartupRegistration.Apply(_settings.StartWithWindows);
 
         _codexService = new CodexQuotaService(_settings.CodexPath);
+        _geminiService = new GeminiQuotaService(_settings.AgyPath);
         UpdateCodexDetectionText();
+        UpdateGeminiSettingsStatus();
         RestartQuotaLoop();
         _viewModel.SetQuotaRefresh(_settings.QuotaRefreshMinutes);
         _viewModel.SetInterval(_settings.SampleSeconds);

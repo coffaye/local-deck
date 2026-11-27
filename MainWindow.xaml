@@ -415,9 +415,9 @@
                 <!-- ░░ MONITOR -->
                 <Grid x:Name="MonitorPage" Visibility="Visible">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="84" />
-                        <RowDefinition Height="86" />
-                        <RowDefinition Height="44" />
+                        <RowDefinition Height="75" />
+                        <RowDefinition Height="55" />
+                        <RowDefinition Height="40" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -429,35 +429,35 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="11" />
-                            <RowDefinition Height="50" />
-                            <RowDefinition Height="7" />
-                            <RowDefinition Height="16" />
+                            <RowDefinition Height="14" />
+                            <RowDefinition Height="41" />
+                            <RowDefinition Height="6" />
+                            <RowDefinition Height="14" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="CPU 占用" Style="{StaticResource CompactLabelStyle}" FontSize="8.5" />
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="内存占用" Style="{StaticResource CompactLabelStyle}" FontSize="8.5" />
+                        <TextBlock x:Name="CpuLabelText" Grid.Row="0" Grid.Column="0" Text="CPU 占用" Style="{StaticResource CompactLabelStyle}" FontSize="8.5" VerticalAlignment="Center" />
+                        <TextBlock x:Name="MemoryLabelText" Grid.Row="0" Grid.Column="2" Text="内存占用" Style="{StaticResource CompactLabelStyle}" FontSize="8.5" VerticalAlignment="Center" />
 
                         <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock x:Name="CpuValueText" Text="{Binding CpuValue}" Style="{StaticResource CompactHeroStyle}" />
-                            <TextBlock x:Name="CpuPercentUnit" Text="%" FontFamily="{StaticResource NarrowFont}" FontSize="12" FontWeight="Bold"
-                                       Foreground="{StaticResource AccentYellowBrush}" Margin="4,0,0,5" VerticalAlignment="Bottom" />
+                            <TextBlock x:Name="CpuValueText" Text="{Binding CpuValue}" Style="{StaticResource CompactHeroStyle}" FontSize="36" />
+                            <TextBlock x:Name="CpuPercentUnit" Text="%" FontFamily="{StaticResource NarrowFont}" FontSize="11" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentYellowBrush}" Margin="4,0,0,4" VerticalAlignment="Bottom" />
                         </StackPanel>
                         <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock x:Name="MemoryValueText" Text="{Binding MemoryValue}" Style="{StaticResource CompactHeroStyle}" />
-                            <TextBlock x:Name="MemoryPercentUnit" Text="%" FontFamily="{StaticResource NarrowFont}" FontSize="12" FontWeight="Bold"
-                                       Foreground="{StaticResource AccentYellowBrush}" Margin="4,0,0,5" VerticalAlignment="Bottom" />
+                            <TextBlock x:Name="MemoryValueText" Text="{Binding MemoryValue}" Style="{StaticResource CompactHeroStyle}" FontSize="36" />
+                            <TextBlock x:Name="MemoryPercentUnit" Text="%" FontFamily="{StaticResource NarrowFont}" FontSize="11" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentYellowBrush}" Margin="4,0,0,4" VerticalAlignment="Bottom" />
                         </StackPanel>
 
-                        <controls:SegmentedBar x:Name="CpuBar" Grid.Row="2" Grid.Column="0" Height="6" Margin="0,1,0,0"
+                        <controls:SegmentedBar x:Name="CpuBar" Grid.Row="2" Grid.Column="0" Height="5" Margin="0,1,0,0"
                                                Value="{Binding CpuPercent}" Fill="{StaticResource AccentCyanBrush}"
                                                Track="{StaticResource ScreenTrackBrush}" SegmentCount="28" />
-                        <controls:SegmentedBar x:Name="MemoryBar" Grid.Row="2" Grid.Column="2" Height="6" Margin="0,1,0,0"
+                        <controls:SegmentedBar x:Name="MemoryBar" Grid.Row="2" Grid.Column="2" Height="5" Margin="0,1,0,0"
                                                Value="{Binding MemoryPercent}" Fill="{StaticResource AccentPinkBrush}"
                                                Track="{StaticResource ScreenTrackBrush}" SegmentCount="28" />
 
                         <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding MemoryDetail}"
-                                   Style="{StaticResource CompactCaptionStyle}" FontSize="8"
+                                   Style="{StaticResource CompactCaptionStyle}" FontSize="7.5"
                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Bottom" />
                     </Grid>
 
@@ -554,21 +554,24 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Codex + Claude + DeepSeek summary. -->
+                    <!-- 2x2 quota grid: CODEX | GEMINI (top), CLAUDE | DEEPSEEK (bottom). -->
                     <Border x:Name="QuotaPanel" Grid.Row="3" Margin="2,4,2,0" Background="#33000000"
                             BorderBrush="{StaticResource ScreenLineBrush}" BorderThickness="1" CornerRadius="5"
-                            Padding="8,7">
+                            Padding="7,5">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.25*" />
+                                <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="1" />
-                                <ColumnDefinition Width="1.05*" />
-                                <ColumnDefinition Width="1" />
-                                <ColumnDefinition Width="1.05*" />
+                                <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="1" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
 
-                            <!-- Codex is narrower now: each window keeps its own reset line. -->
-                            <Grid Grid.Column="0" Margin="0,0,4,0">
+                            <!-- Top-Left: CODEX -->
+                            <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,6,4">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
@@ -589,10 +592,10 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <Grid Grid.Row="1" Margin="0,2,0,0">
+                                <Grid Grid.Row="1" Margin="0,2,0,0" VerticalAlignment="Center">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="6" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
@@ -600,15 +603,15 @@
                                         <TextBlock x:Name="CodexPrimaryLabelText" Text="{Binding Codex.PrimaryLabel}" Style="{StaticResource CompactCaptionStyle}"
                                                    FontSize="6" />
                                         <TextBlock x:Name="CodexPrimaryValueText" Text="{Binding Codex.PrimaryRemainingText}" FontFamily="{StaticResource DisplayFont}"
-                                                   FontSize="18" Foreground="{Binding Codex.PrimaryBrush}" />
-                                        <controls:SegmentedBar Height="3" Margin="0,1,0,0"
+                                                   FontSize="16" Foreground="{Binding Codex.PrimaryBrush}" />
+                                        <controls:SegmentedBar x:Name="CodexPrimaryBar" Height="3" Margin="0,1,0,0"
                                                                Value="{Binding Codex.PrimaryRemaining}"
                                                                Fill="{Binding Codex.PrimaryBrush}"
                                                                Track="{StaticResource ScreenTrackBrush}" SegmentCount="18" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                        <StackPanel Orientation="Horizontal" Margin="0,1.5,0,0"
                                                     ToolTip="{Binding Codex.ResetCreditsText}">
-                                            <TextBlock Text="↻ " FontSize="5.2" Foreground="{StaticResource ScreenDimBrush}" />
-                                            <TextBlock Text="{Binding Codex.PrimaryResetText}" FontSize="5.2"
+                                            <TextBlock x:Name="CodexPrimaryResetPrefix" Text="↻ " FontSize="5.5" Foreground="{StaticResource ScreenDimBrush}" />
+                                            <TextBlock x:Name="CodexPrimaryResetText" Text="{Binding Codex.PrimaryResetText}" FontSize="5.5"
                                                        Foreground="{StaticResource ScreenDimBrush}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
@@ -618,15 +621,15 @@
                                         <TextBlock x:Name="CodexSecondaryLabelText" Text="{Binding Codex.SecondaryLabel}" Style="{StaticResource CompactCaptionStyle}"
                                                    FontSize="6" />
                                         <TextBlock x:Name="CodexSecondaryValueText" Text="{Binding Codex.SecondaryRemainingText}" FontFamily="{StaticResource DisplayFont}"
-                                                   FontSize="18" Foreground="{Binding Codex.SecondaryBrush}" />
-                                        <controls:SegmentedBar Height="3" Margin="0,1,0,0"
+                                                   FontSize="16" Foreground="{Binding Codex.SecondaryBrush}" />
+                                        <controls:SegmentedBar x:Name="CodexSecondaryBar" Height="3" Margin="0,1,0,0"
                                                                Value="{Binding Codex.SecondaryRemaining}"
                                                                Fill="{Binding Codex.SecondaryBrush}"
                                                                Track="{StaticResource ScreenTrackBrush}" SegmentCount="18" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                        <StackPanel Orientation="Horizontal" Margin="0,1.5,0,0"
                                                     ToolTip="{Binding Codex.ResetCreditsText}">
-                                            <TextBlock Text="↻ " FontSize="5.2" Foreground="{StaticResource ScreenDimBrush}" />
-                                            <TextBlock Text="{Binding Codex.SecondaryResetText}" FontSize="5.2"
+                                            <TextBlock x:Name="CodexSecondaryResetPrefix" Text="↻ " FontSize="5.5" Foreground="{StaticResource ScreenDimBrush}" />
+                                            <TextBlock x:Name="CodexSecondaryResetText" Text="{Binding Codex.SecondaryResetText}" FontSize="5.5"
                                                        Foreground="{StaticResource ScreenDimBrush}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
@@ -634,10 +637,80 @@
                                 </Grid>
                             </Grid>
 
-                            <Border Grid.Column="1" Background="{StaticResource ScreenLineBrush}" Margin="0,1,0,1" />
+                            <!-- Top-Right: GEMINI (Antigravity via agy CLI) -->
+                            <Grid Grid.Row="0" Grid.Column="2" Margin="6,0,0,4"
+                                  ToolTip="{Binding Gemini.HintText}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
 
-                            <!-- Claude prepaid supplier balance. Token and endpoint are read from Claude CLI config. -->
-                            <Grid Grid.Column="2" Margin="7,0,6,0"
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="GEMINI" FontFamily="{StaticResource MonoFont}" FontSize="7"
+                                                   FontWeight="Bold" Foreground="{StaticResource ScreenTextBrush}" />
+                                        <TextBlock Text="{Binding Gemini.PlanText}" FontFamily="{StaticResource MonoFont}"
+                                                   FontSize="5.5" Foreground="{StaticResource AccentYellowBrush}" Margin="3,1,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Ellipse Width="4" Height="4" Fill="{Binding Gemini.StatusBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,3,0" />
+                                        <TextBlock Text="{Binding Gemini.StatusText}" FontSize="5.5"
+                                                   Foreground="{Binding Gemini.StatusBrush}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Grid.Row="1" Margin="0,2,0,0" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="6" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel x:Name="GeminiPrimaryStack">
+                                        <TextBlock x:Name="GeminiPrimaryLabelText" Text="{Binding Gemini.PrimaryLabel}" Style="{StaticResource CompactCaptionStyle}"
+                                                   FontSize="6" />
+                                        <TextBlock x:Name="GeminiPrimaryValueText" Text="{Binding Gemini.PrimaryRemainingText}" FontFamily="{StaticResource DisplayFont}"
+                                                   FontSize="16" Foreground="{Binding Gemini.PrimaryBrush}" />
+                                        <controls:SegmentedBar x:Name="GeminiPrimaryBar" Height="3" Margin="0,1,0,0"
+                                                               Value="{Binding Gemini.PrimaryRemaining}"
+                                                               Fill="{Binding Gemini.PrimaryBrush}"
+                                                               Track="{StaticResource ScreenTrackBrush}" SegmentCount="18" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,1.5,0,0"
+                                                    ToolTip="{Binding Gemini.HintText}">
+                                            <TextBlock x:Name="GeminiPrimaryResetPrefix" Text="↻ " FontSize="5.5" Foreground="{StaticResource ScreenDimBrush}" />
+                                            <TextBlock x:Name="GeminiPrimaryResetText" Text="{Binding Gemini.PrimaryResetText}" FontSize="5.5"
+                                                       Foreground="{StaticResource ScreenDimBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel x:Name="GeminiSecondaryStack" Grid.Column="2">
+                                        <TextBlock x:Name="GeminiSecondaryLabelText" Text="{Binding Gemini.SecondaryLabel}" Style="{StaticResource CompactCaptionStyle}"
+                                                   FontSize="6" />
+                                        <TextBlock x:Name="GeminiSecondaryValueText" Text="{Binding Gemini.SecondaryRemainingText}" FontFamily="{StaticResource DisplayFont}"
+                                                   FontSize="16" Foreground="{Binding Gemini.SecondaryBrush}" />
+                                        <controls:SegmentedBar x:Name="GeminiSecondaryBar" Height="3" Margin="0,1,0,0"
+                                                               Value="{Binding Gemini.SecondaryRemaining}"
+                                                               Fill="{Binding Gemini.SecondaryBrush}"
+                                                               Track="{StaticResource ScreenTrackBrush}" SegmentCount="18" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,1.5,0,0"
+                                                    ToolTip="{Binding Gemini.HintText}">
+                                            <TextBlock x:Name="GeminiSecondaryResetPrefix" Text="↻ " FontSize="5.5" Foreground="{StaticResource ScreenDimBrush}" />
+                                            <TextBlock x:Name="GeminiSecondaryResetText" Text="{Binding Gemini.SecondaryResetText}" FontSize="5.5"
+                                                       Foreground="{StaticResource ScreenDimBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Cross dividers -->
+                            <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Background="{StaticResource ScreenLineBrush}" Margin="0,1,0,1" />
+                            <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Background="{StaticResource ScreenLineBrush}" Margin="1,0,1,0" />
+
+                            <!-- Bottom-Left: CLAUDE -->
+                            <Grid Grid.Row="2" Grid.Column="0" Margin="0,4,6,0"
                                   ToolTip="{Binding Claude.HintText}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -653,9 +726,9 @@
                                                    Foreground="{Binding Claude.StatusBrush}" />
                                     </StackPanel>
                                 </Grid>
-                                <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,8,0,0">
+                                <StackPanel x:Name="ClaudeBalancePanel" Grid.Row="1" VerticalAlignment="Top" Margin="0,5,0,0">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Claude.CurrencySymbol}" FontFamily="{StaticResource NarrowFont}"
+                                        <TextBlock x:Name="ClaudeCurrencyText" Text="{Binding Claude.CurrencySymbol}" FontFamily="{StaticResource NarrowFont}"
                                                    FontSize="8" FontWeight="Bold" Foreground="{StaticResource ScreenMutedBrush}"
                                                    VerticalAlignment="Bottom" Margin="0,0,2,3" />
                                         <TextBlock x:Name="ClaudeBalanceValueText" Text="{Binding Claude.BalanceText}"
@@ -663,15 +736,15 @@
                                                    Foreground="{StaticResource AccentYellowBrush}"
                                                    TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                    <TextBlock Text="{Binding Claude.TodayText}" FontSize="6.2"
-                                               Foreground="{StaticResource ScreenMutedBrush}"
+                                    <TextBlock x:Name="ClaudeTodayText" Text="{Binding Claude.TodayText}" FontSize="6.5"
+                                               Foreground="{StaticResource ScreenMutedBrush}" Margin="0,1,0,0"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Grid>
 
-                            <Border Grid.Column="3" Background="{StaticResource ScreenLineBrush}" Margin="0,1,0,1" />
-
-                            <Grid Grid.Column="4" Margin="7,0,0,0">
+                            <!-- Bottom-Right: DEEPSEEK -->
+                            <Grid Grid.Row="2" Grid.Column="2" Margin="6,4,0,0"
+                                  ToolTip="{Binding DeepSeek.HintText}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
@@ -686,7 +759,7 @@
                                                    Foreground="{Binding DeepSeek.StatusBrush}" />
                                     </StackPanel>
                                 </Grid>
-                                <Grid Grid.Row="1" VerticalAlignment="Center">
+                                <Grid x:Name="DeepSeekBalancePanel" Grid.Row="1" VerticalAlignment="Top" Margin="0,5,0,0">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <StackPanel.Style>
                                             <Style TargetType="StackPanel">
@@ -698,11 +771,12 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </StackPanel.Style>
-                                        <TextBlock Text="{Binding DeepSeek.CurrencySymbol}" FontFamily="{StaticResource NarrowFont}"
+                                        <TextBlock x:Name="DeepSeekCurrencyText" Text="{Binding DeepSeek.CurrencySymbol}" FontFamily="{StaticResource NarrowFont}"
                                                    FontSize="8" FontWeight="Bold" Foreground="{StaticResource ScreenMutedBrush}"
                                                    VerticalAlignment="Bottom" Margin="0,0,2,3" />
                                         <TextBlock x:Name="DeepSeekBalanceValueText" Text="{Binding DeepSeek.BalanceText}" FontFamily="{StaticResource DisplayFont}"
-                                                   FontSize="22" Foreground="{StaticResource AccentYellowBrush}" />
+                                                   FontSize="22" Foreground="{StaticResource AccentYellowBrush}"
+                                                   TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <TextBlock Text="—" FontFamily="{StaticResource MonoFont}" FontSize="15"
                                                Foreground="{StaticResource ScreenDimBrush}" VerticalAlignment="Center">
@@ -804,6 +878,30 @@
                                         Width="36" Click="ClearClaudeKey_Click" />
                             </Grid>
                             <TextBlock x:Name="ClaudeStatusText" Text="" Style="{StaticResource CompactCaptionStyle}"
+                                       FontSize="6.5" Foreground="{StaticResource ScreenMutedBrush}" Margin="0,2,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+
+                            <TextBlock Text="Gemini (agy) 路径" Style="{StaticResource MiniFieldLabelStyle}" Margin="0,5,0,2" />
+                            <Grid Height="26">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="4" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="4" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="4" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="AgyPathBox" Style="{StaticResource MiniTextBoxStyle}" IsReadOnly="True"
+                                         ToolTip="本机 Antigravity CLI (agy) 路径；只读查询 /usage" />
+                                <Button Grid.Column="2" Content="自动" Style="{StaticResource MiniButtonStyle}"
+                                        Width="36" Click="AutoDetectAgy_Click" />
+                                <Button Grid.Column="4" Content="浏览" Style="{StaticResource MiniButtonStyle}"
+                                        Width="36" Click="BrowseAgy_Click" />
+                                <Button Grid.Column="6" Content="测试" Style="{StaticResource MiniButtonStyle}"
+                                        Width="36" Click="TestGemini_Click" />
+                            </Grid>
+                            <TextBlock x:Name="GeminiStatusText" Text="" Style="{StaticResource CompactCaptionStyle}"
                                        FontSize="6.5" Foreground="{StaticResource ScreenMutedBrush}" Margin="0,2,0,0"
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
